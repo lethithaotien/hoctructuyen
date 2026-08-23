@@ -37,7 +37,6 @@
             border-radius: 6px; font-size: 15px; box-sizing: border-box; transition: 0.3s;
         }
         .form-control:focus { border-color: var(--primary-color); outline: none; }
-        .helper-text { font-size: 12px; color: #888; margin-top: 5px; }
 
         .btn {
             width: 100%; padding: 14px; background-color: var(--primary-color); color: white;
@@ -74,9 +73,8 @@
         
         .lesson-card {
             background: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 15px; border-left: 5px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; border-left: 5px solid var(--primary-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
         }
-        .lesson-card.unlocked { border-left-color: var(--primary-color); }
         .lesson-info h3 { margin: 0 0 8px 0; font-size: 18px; }
         .lesson-info p { margin: 0; color: var(--text-light); font-size: 14px; }
         
@@ -84,7 +82,7 @@
         .btn-enter { background-color: var(--primary-color); width: auto; padding: 10px 20px; }
         .btn-test { background-color: var(--warning); width: auto; padding: 10px 20px; }
         .btn-test:hover { background-color: #f57c00; }
-        .btn-locked { background-color: #e0e0e0; color: #999; cursor: not-allowed; width: auto; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; }
+        .btn-locked { background-color: #e0e0e0; color: #777; cursor: not-allowed; width: auto; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; }
 
         .footer { text-align: center; padding: 20px; margin-top: auto; }
         .admin-link { color: #aaa; text-decoration: none; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
@@ -171,8 +169,7 @@
             const savedConfig = localStorage.getItem('courseConfig');
             
             if (savedStudent && savedConfig) {
-                renderDashboard(JSON.parse(savedStudent), JSON.parse(savedConfig));
-                showScreen('dashboard-screen');
+                checkStudentProgress(JSON.parse(savedStudent), JSON.parse(savedConfig));
             } else {
                 showScreen('login-screen');
             }
@@ -206,8 +203,7 @@
                 if (data.status === "success") {
                     localStorage.setItem('studentData', JSON.stringify(data.data));
                     localStorage.setItem('courseConfig', JSON.stringify(data.config));
-                    renderDashboard(data.data, data.config);
-                    showScreen('dashboard-screen');
+                    checkStudentProgress(data.data, data.config);
                 } else {
                     msgBox.innerText = data.message; msgBox.style.display = 'block';
                 }
@@ -217,7 +213,29 @@
             });
         }
 
-        function renderDashboard(student, config) {
+        // Tự động gọi API lấy điểm của sinh viên để kiểm tra điều kiện mở nút Quiz (>= 5.0)
+        function checkStudentProgress(student, config) {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "get_admin_data" })
+            }).then(res => res.json()).then(resData => {
+                let videoScoresMap = {};
+                if (resData.status === "success") {
+                    let svRecord = resData.data.find(s => s.maSV === student.maSV);
+                    if (svRecord) {
+                        videoScoresMap = svRecord.videoScores; // Chứa điểm video các bài VD: {Bai1: 10, Bai2: "-"}
+                    }
+                }
+                renderDashboard(student, config, videoScoresMap);
+                showScreen('dashboard-screen');
+            }).catch(err => {
+                // Nếu lỗi mạng, vẫn render nhưng tạm khóa nút quiz để đảm bảo an toàn
+                renderDashboard(student, config, {});
+                showScreen('dashboard-screen');
+            });
+        }
+
+        function renderDashboard(student, config, videoScoresMap) {
             document.getElementById('student-name').innerText = student.hoTen;
             document.getElementById('student-class').innerText = student.lop;
             document.getElementById('course-name').innerText = "HỌC PHẦN: " + config.tenHocPhan;
@@ -227,17 +245,26 @@
             const container = document.getElementById('lesson-list-container');
             container.innerHTML = '';
 
-            config.baiHoc.forEach((bai, index) => {
+            config.baiHoc.forEach((bai) => {
+                let vScore = videoScoresMap[bai.maBai];
+                let isPassedVideo = (vScore !== undefined && vScore !== "-" && Number(vScore) >= 5.0);
+
+                let quizBtnHtml = "";
+                if (isPassedVideo) {
+                    quizBtnHtml = `<button class="btn btn-test" onclick="testQuizDirectly('${bai.maBai}')">📝 Vào thi Quiz</button>`;
+                } else {
+                    quizBtnHtml = `<button class="btn-locked" title="Cần hoàn thành xem video và đạt từ 5.0 điểm trở lên để mở khóa">🔒 Thi Quiz (Chưa đủ ĐK)</button>`;
+                }
+
                 let cardHtml = `
-                    <div class="lesson-card unlocked">
+                    <div class="lesson-card">
                         <div class="lesson-info">
                             <h3>${bai.tenBai}</h3>
-                            <p>Xem video bài giảng, trả lời câu hỏi tương tác và hoàn thành bài Quiz.</p>
+                            <p>Xem video bài giảng, trả lời câu hỏi tương tác (Điểm Video: <b>${vScore !== undefined ? vScore : "-"}</b>)</p>
                         </div>
                         <div class="action-buttons">
                             <button class="btn btn-enter" onclick="goToLesson('${bai.maBai}')">▶ Vào học</button>
-                            <!-- NÚT TEST NHANH DÀNH CHO CÔ TIÊN KIỂM THỬ -->
-                            <button class="btn btn-test" onclick="testQuizDirectly('${bai.maBai}')">📝 Thi thử</button>
+                            ${quizBtnHtml}
                         </div>
                     </div>
                 `;
@@ -245,21 +272,18 @@
             });
         }
 
-        // Chuyển hướng học Video (Bình thường)
         function goToLesson(maBai) {
             localStorage.setItem('currentLesson', maBai);
             localStorage.removeItem('isReviewMode');
             window.location.href = 'video.html';
         }
 
-        // Chuyển thẳng sang Quiz (Bypass Video để cô test)
         function testQuizDirectly(maBai) {
             localStorage.setItem('currentLesson', maBai);
             localStorage.removeItem('isReviewMode');
             window.location.href = 'quiz.html';
         }
 
-        // Chuyển sang Luyện thi tổng hợp
         function goToReviewExam() {
             localStorage.setItem('isReviewMode', 'true');
             window.location.href = 'quiz.html';
