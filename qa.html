@@ -93,9 +93,9 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwis4rfn0WGtxpfNPrbs49_Cl21-XuxCQl6DCC5_WWP565ZmtivRn8sPc8ofN8vm6Ayg/exec";
+        // Đã cập nhật đúng Link API mới nhất của cô
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwWFLNG7kG19vLkUGgCjysczBq9vlb84BzdM02gIlUAU4Bc1DEoiPHY9IaFSBLKoeMtA/exec";
         
-        // MẬT KHẨU BẢO VỆ TRANG NÀY
         function checkQAPass() {
             if(document.getElementById('qa-pass').value === "admin123") {
                 document.getElementById('qa-login').style.display = 'none';
@@ -113,6 +113,7 @@
                 return;
             }
             let select = document.getElementById('lesson-select');
+            select.innerHTML = '';
             config.baiHoc.forEach(bai => {
                 let opt = document.createElement('option');
                 opt.value = bai.maBai; opt.innerText = bai.maBai + " - " + bai.tenBai;
@@ -124,16 +125,30 @@
             let maBai = document.getElementById('lesson-select').value;
             document.getElementById('data-container').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
+            document.getElementById('loader').innerText = "⏳ Đang tải dữ liệu từ Google Sheets...";
 
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ action: "get_lesson_data", maBai: maBai })
-            }).then(res => res.json()).then(data => {
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Mạng bị lỗi hoặc máy chủ từ chối kết nối.");
+                return res.json();
+            })
+            .then(data => {
                 document.getElementById('loader').style.display = 'none';
                 if(data.status === "success") {
-                    renderVideoData(data.data.videoData); renderQuizData(data.data.quizData);
+                    renderVideoData(data.data.videoData); 
+                    renderQuizData(data.data.quizData);
                     document.getElementById('data-container').style.display = 'block';
+                } else {
+                    alert("⚠️ Lỗi từ hệ thống: " + data.message);
                 }
+            })
+            .catch(err => {
+                document.getElementById('loader').style.display = 'none';
+                alert("⚠️ Đã xảy ra lỗi kết nối: " + err.message + "\\n(Hãy tải lại trang và thử lại)");
+                console.error(err);
             });
         }
 
