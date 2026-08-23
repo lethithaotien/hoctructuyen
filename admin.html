@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cổng Quản Trị Đào Tạo</title>
-    <!-- Thư viện SheetJS để xuất Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -202,7 +201,7 @@
             document.getElementById(tabId).classList.add('active');
         }
 
-        // TẢI & HIỂN THỊ DỮ LIỆU
+        // TẢI & HIỂN THỊ DỮ LIỆU ĐÃ CẬP NHẬT PHẦN BẮT LỖI CHI TIẾT
         function loadAdminData() {
             document.getElementById('page-loader').style.display = 'block';
             document.getElementById('tab-video').style.display = 'none';
@@ -211,18 +210,24 @@
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ action: "get_admin_data" })
-            }).then(res => res.json()).then(data => {
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Mã lỗi HTTP: " + res.status);
+                return res.json();
+            })
+            .then(data => {
                 document.getElementById('page-loader').style.display = 'none';
-                document.getElementById('tab-video').style.display = 'block';
-                document.getElementById('tab-quiz').style.display = 'block';
-                
                 if(data.status === "success") {
+                    document.getElementById('tab-video').style.display = 'block';
+                    document.getElementById('tab-quiz').style.display = 'block';
                     renderTables(data.data);
                 } else {
-                    alert("Lỗi tải dữ liệu: " + data.message);
+                    alert("API trả về lỗi từ Google Sheets: " + data.message);
                 }
             }).catch(err => {
-                alert("Lỗi kết nối máy chủ!");
+                document.getElementById('page-loader').style.display = 'none';
+                alert("Lỗi Fetch (Mạng/CORS/Cú pháp): " + err.message);
+                console.error(err);
             });
         }
 
@@ -273,17 +278,12 @@
 
         // XUẤT FILE EXCEL THEO TAB ĐANG MỞ
         function exportToExcel() {
-            // Xác định Tab nào đang hiển thị
             let activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
             let tableId = activeTab === 'tab-video' ? 'table-video' : 'table-quiz';
             let fileName = activeTab === 'tab-video' ? 'Diem_TienDo_HeSo1.xlsx' : 'Diem_Quiz_HeSo2.xlsx';
 
             let table = document.getElementById(tableId);
-            
-            // Chuyển đổi HTML Table thành đối tượng Workbook của SheetJS
             let wb = XLSX.utils.table_to_book(table, {sheet: "Bang Diem"});
-            
-            // Kích hoạt tải file
             XLSX.writeFile(wb, fileName);
         }
     </script>
