@@ -44,10 +44,11 @@
             border-bottom: 1px solid var(--border-color);
         }
         .admin-title { font-size: 20px; font-weight: bold; color: var(--primary-color); }
-        .admin-actions { display: flex; gap: 10px; }
-        .btn-action { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-action { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
         .btn-action:hover { opacity: 0.9; }
         .btn-danger { background: var(--danger); }
+        .btn-qa { background: #3f51b5; } /* Màu riêng cho nút QA */
 
         /* Tabs System */
         .tabs-container { background: var(--card-bg); display: flex; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 0 0 10px 10px; margin-bottom: 20px;}
@@ -98,7 +99,9 @@
                     <div class="admin-title">📊 QUẢN LÝ TIẾN ĐỘ VÀ KẾT QUẢ HỌC TẬP</div>
                 </div>
                 <div class="admin-actions">
-                    <button class="btn-action" onclick="exportToExcel()">📥 Xuất Excel Tab Hiện Tại</button>
+                    <!-- Nút mới dẫn sang trang QA -->
+                    <a href="qa.html" class="btn-action btn-qa">🔍 Phòng Kiểm Định (QA)</a>
+                    <button class="btn-action" onclick="exportToExcel()">📥 Xuất Excel Tab Hiện</button>
                     <button class="btn-action btn-danger" onclick="adminLogout()">Đăng Xuất</button>
                 </div>
             </div>
@@ -201,7 +204,7 @@
             document.getElementById(tabId).classList.add('active');
         }
 
-        // TẢI & HIỂN THỊ DỮ LIỆU ĐÃ CẬP NHẬT PHẦN BẮT LỖI CHI TIẾT
+        // TẢI & HIỂN THỊ DỮ LIỆU
         function loadAdminData() {
             document.getElementById('page-loader').style.display = 'block';
             document.getElementById('tab-video').style.display = 'none';
@@ -276,7 +279,7 @@
             });
         }
 
-        // XUẤT FILE EXCEL THEO TAB ĐANG MỞ
+        // XUẤT FILE EXCEL
         function exportToExcel() {
             let activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
             let tableId = activeTab === 'tab-video' ? 'table-video' : 'table-quiz';
