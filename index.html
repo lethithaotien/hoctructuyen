@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Trực Tuyến - Cổng Sinh Viên</title>
+    <style>
+        :root {
+            --primary-color: #00796b;
+            --primary-hover: #004d40;
+            --bg-color: #f4f7f6;
+            --text-main: #333;
+            --text-light: #666;
+            --card-bg: #ffffff;
+            --danger: #f44336;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Container & Screens */
+        .container {
+            flex: 1;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Login Screen */
+        .login-wrapper {
+            max-width: 400px;
+            margin: 8vh auto 0;
+            background: var(--card-bg);
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .app-title { font-size: 28px; font-weight: 800; color: var(--primary-color); margin: 0 0 5px 0; text-transform: uppercase; }
+        .app-subtitle { font-size: 15px; color: var(--text-light); margin-bottom: 30px; }
+        
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--text-light); }
+        .form-control {
+            width: 100%; padding: 12px 15px; border: 1px solid var(--border-color);
+            border-radius: 6px; font-size: 15px; box-sizing: border-box; transition: 0.3s;
+        }
+        .form-control:focus { border-color: var(--primary-color); outline: none; }
+        .helper-text { font-size: 12px; color: #888; margin-top: 5px; }
+
+        .btn {
+            width: 100%; padding: 14px; background-color: var(--primary-color); color: white;
+            border: none; border-radius: 6px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center;
+        }
+        .btn:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .btn:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+
+        /* Spinner */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top: 3px solid white; width: 20px; height: 20px;
+            animation: spin 1s linear infinite; display: none; margin-right: 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Dashboard Screen */
+        .dashboard-header {
+            background: var(--card-bg); padding: 20px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px;
+        }
+        .course-title { font-size: 22px; font-weight: bold; text-align: center; color: var(--primary-color); margin-bottom: 15px; text-transform: uppercase; }
+        .user-info-row { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid var(--border-color); }
+        .user-name { font-weight: bold; font-size: 16px; }
+        .btn-logout { background-color: var(--danger); padding: 8px 15px; width: auto; font-size: 14px; }
+        .btn-logout:hover { background-color: #d32f2f; }
+
+        .utilities { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .util-card {
+            background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center;
+            text-decoration: none; color: var(--text-main); border: 1px solid var(--border-color);
+            transition: 0.2s;
+        }
+        .util-card:hover { border-color: var(--primary-color); box-shadow: 0 4px 10px rgba(0,121,107,0.1); transform: translateY(-2px); }
+        .util-icon { font-size: 24px; margin-bottom: 5px; }
+        .util-title { font-weight: bold; font-size: 14px; }
+
+        .section-title { font-size: 18px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-bottom: 20px; }
+        
+        .lesson-card {
+            background: var(--card-bg); padding: 20px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px;
+            border-left: 5px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+            transition: 0.3s;
+        }
+        .lesson-card.unlocked { border-left-color: var(--primary-color); }
+        .lesson-info h3 { margin: 0 0 8px 0; font-size: 18px; }
+        .lesson-info p { margin: 0; color: var(--text-light); font-size: 14px; }
+        
+        .btn-enter { background-color: var(--primary-color); width: auto; padding: 10px 20px; }
+        .btn-locked { background-color: #e0e0e0; color: #999; cursor: not-allowed; width: auto; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; }
+
+        /* Footer / Admin Link */
+        .footer { text-align: center; padding: 20px; margin-top: auto; }
+        .admin-link { color: #aaa; text-decoration: none; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+        .admin-link:hover { color: var(--primary-color); }
+        
+        /* Cảnh báo mạng */
+        #offline-warning {
+            display: none; background: var(--danger); color: white; text-align: center;
+            padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="offline-warning">⚠️ Mất kết nối Internet. Vui lòng kiểm tra lại mạng!</div>
+
+    <div class="container">
+        <!-- MÀN HÌNH ĐĂNG NHẬP -->
+        <div id="login-screen" class="screen">
+            <div class="login-wrapper">
+                <h1 class="app-title">HỌC TRỰC TUYẾN</h1>
+                <div class="app-subtitle">Hệ thống Đào tạo & Đánh giá</div>
+                
+                <div class="form-group">
+                    <label>Mã Sinh Viên</label>
+                    <input type="text" id="masv-input" class="form-control" placeholder="Ví dụ: 25CC010001" autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label>Mật Khẩu</label>
+                    <input type="password" id="pass-input" class="form-control" placeholder="Nhập 6 số ngày sinh">
+                    <div class="helper-text">* Ví dụ: Sinh ngày 17/04/07 thì nhập <b>170407</b></div>
+                </div>
+
+                <div id="login-msg" style="color: var(--danger); font-size: 14px; margin-bottom: 15px; display: none;"></div>
+                
+                <button id="btn-login" class="btn" onclick="handleLogin()">
+                    <div class="spinner" id="login-spinner"></div>
+                    <span id="login-text">Đăng Nhập</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH TỔNG QUAN (DASHBOARD) -->
+        <div id="dashboard-screen" class="screen">
+            <div class="dashboard-header">
+                <div class="course-title" id="course-name">ĐANG TẢI...</div>
+                <div class="user-info-row">
+                    <div class="user-name">👤 <span id="student-name"></span> (<span id="student-class"></span>)</div>
+                    <button class="btn btn-logout" onclick="handleLogout()">Đăng xuất</button>
+                </div>
+            </div>
+
+            <div class="utilities">
+                <a href="#" target="_blank" id="link-tailieu" class="util-card">
+                    <div class="util-icon">📚</div>
+                    <div class="util-title">Tài liệu Môn học</div>
+                </a>
+                <a href="#" target="_blank" id="link-thongbao" class="util-card">
+                    <div class="util-icon">📢</div>
+                    <div class="util-title">Bảng điểm & Thông báo</div>
+                </a>
+            </div>
+
+            <div class="section-title">Tiến trình Học tập</div>
+            <div id="lesson-list-container">
+                <!-- Danh sách bài học sẽ được Javascript vẽ vào đây -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CỔNG QUẢN TRỊ (FOOTER) -->
+    <div class="footer">
+        <a href="admin.html" class="admin-link">
+            <span>⚙️</span> Quản lý Đào tạo
+        </a>
+    </div>
+
+    <script>
+        // API URL ĐÃ ĐƯỢC GÁN CỨNG (TỪ BƯỚC 1)
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwis4rfn0WGtxpfNPrbs49_Cl21-XuxCQl6DCC5_WWP565ZmtivRn8sPc8ofN8vm6Ayg/exec";
+
+        // Theo dõi trạng thái mạng
+        window.addEventListener('offline', () => document.getElementById('offline-warning').style.display = 'block');
+        window.addEventListener('online', () => document.getElementById('offline-warning').style.display = 'none');
+
+        // KIỂM TRA LOCALSTORAGE KHI MỞ TRANG
+        window.onload = () => {
+            const savedStudent = localStorage.getItem('studentData');
+            const savedConfig = localStorage.getItem('courseConfig');
+            
+            if (savedStudent && savedConfig) {
+                renderDashboard(JSON.parse(savedStudent), JSON.parse(savedConfig));
+                showScreen('dashboard-screen');
+            } else {
+                showScreen('login-screen');
+            }
+        };
+
+        // CHUYỂN ĐỔI MÀN HÌNH
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // XỬ LÝ ĐĂNG NHẬP
+        function handleLogin() {
+            if (!navigator.onLine) {
+                alert("Vui lòng kiểm tra lại kết nối mạng!");
+                return;
+            }
+
+            const maSV = document.getElementById('masv-input').value.trim();
+            const matKhau = document.getElementById('pass-input').value.trim();
+            const msgBox = document.getElementById('login-msg');
+            const btnLogin = document.getElementById('btn-login');
+            const spinner = document.getElementById('login-spinner');
+            const btnText = document.getElementById('login-text');
+
+            if (!maSV || !matKhau) {
+                msgBox.innerText = "Vui lòng nhập đầy đủ Mã Sinh Viên và Mật khẩu.";
+                msgBox.style.display = 'block';
+                return;
+            }
+
+            // Trạng thái Loading
+            msgBox.style.display = 'none';
+            btnLogin.disabled = true;
+            spinner.style.display = 'block';
+            btnText.innerText = 'Đang xử lý...';
+
+            // Gọi API
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "login_student", maSV: maSV, matKhau: matKhau })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnLogin.disabled = false;
+                spinner.style.display = 'none';
+                btnText.innerText = 'Đăng Nhập';
+
+                if (data.status === "success") {
+                    // Lưu vào localStorage
+                    localStorage.setItem('studentData', JSON.stringify(data.data));
+                    localStorage.setItem('courseConfig', JSON.stringify(data.config));
+                    
+                    renderDashboard(data.data, data.config);
+                    showScreen('dashboard-screen');
+                } else {
+                    msgBox.innerText = data.message;
+                    msgBox.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                btnLogin.disabled = false;
+                spinner.style.display = 'none';
+                btnText.innerText = 'Đăng Nhập';
+                msgBox.innerText = "Lỗi kết nối máy chủ. Vui lòng thử lại sau.";
+                msgBox.style.display = 'block';
+            });
+        }
+
+        // VẼ GIAO DIỆN DASHBOARD
+        function renderDashboard(student, config) {
+            document.getElementById('student-name').innerText = student.hoTen;
+            document.getElementById('student-class').innerText = student.lop;
+            document.getElementById('course-name').innerText = "HỌC PHẦN: " + config.tenHocPhan;
+            document.getElementById('link-tailieu').href = config.linkTaiLieu;
+            document.getElementById('link-thongbao').href = config.linkThongBao;
+
+            const container = document.getElementById('lesson-list-container');
+            container.innerHTML = '';
+
+            config.baiHoc.forEach((bai, index) => {
+                // Tạm thời hiển thị trạng thái Mở cho tất cả các bài (Tiến độ thực tế sẽ bị chặn ở video.html nếu gian lận)
+                // Tuy nhiên, về mặt thị giác, ta sẽ ưu tiên bài 1, các bài sau có thể bổ sung logic khóa nếu cần
+                const isUnlocked = true; // Mặc định mở để kiểm thử. (Sau này có thể nâng cấp mảng tiến độ)
+
+                let btnHtml = isUnlocked 
+                    ? `<button class="btn btn-enter" onclick="goToLesson('${bai.maBai}')">▶ Vào học</button>`
+                    : `<button class="btn-locked" disabled>🔒 Đã khóa</button>`;
+
+                let cardHtml = `
+                    <div class="lesson-card ${isUnlocked ? 'unlocked' : ''}">
+                        <div class="lesson-info">
+                            <h3>${bai.tenBai}</h3>
+                            <p>Xem video bài giảng, trả lời câu hỏi tương tác và hoàn thành bài Quiz.</p>
+                        </div>
+                        ${btnHtml}
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            });
+        }
+
+        // CHUYỂN HƯỚNG SANG TRANG VIDEO
+        function goToLesson(maBai) {
+            localStorage.setItem('currentLesson', maBai);
+            window.location.href = 'video.html';
+        }
+
+        // ĐĂNG XUẤT
+        function handleLogout() {
+            if(confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+                localStorage.clear();
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

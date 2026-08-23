@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Trực Tuyến - Video Tương Tác</title>
+    <style>
+        :root {
+            --primary-color: #00796b;
+            --primary-hover: #004d40;
+            --bg-color: #f4f7f6;
+            --text-main: #333;
+            --card-bg: #ffffff;
+            --danger: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color); color: var(--text-main);
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* Header */
+        .header-info {
+            width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center;
+            background: var(--card-bg); padding: 15px 20px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box;
+        }
+        .lesson-title { font-size: 18px; font-weight: bold; color: var(--primary-color); }
+        .user-name { font-weight: bold; font-size: 14px; background: #e0f2f1; padding: 5px 10px; border-radius: 5px;}
+
+        /* Trạng thái Playlist */
+        .playlist-status {
+            width: 100%; max-width: 900px; text-align: left; font-weight: bold;
+            margin-bottom: 10px; color: #555; display: none;
+        }
+
+        /* Khung Video & Thanh Tiến Độ */
+        .video-wrapper {
+            width: 100%; max-width: 900px; background: #000; border-radius: 8px;
+            overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;
+        }
+        #player-container { width: 100%; aspect-ratio: 16/9; pointer-events: none; }
+        
+        .custom-progress-bar { width: 100%; height: 8px; background: #444; position: relative; }
+        .progress-fill { height: 100%; background: #ff0000; width: 0%; transition: width 0.2s linear; }
+        .progress-indicator { position: absolute; top: -25px; right: 10px; color: white; font-size: 12px; font-weight: bold; }
+
+        /* Màn hình Báo Lỗi Video */
+        #error-screen {
+            display: none; width: 100%; max-width: 900px; background: #ffebee;
+            padding: 40px 20px; border-radius: 8px; border: 2px solid var(--danger);
+            text-align: center; box-sizing: border-box; color: #b71c1c;
+        }
+
+        /* Modal Câu Hỏi */
+        #question-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: left;}
+        .question-img { max-width: 100%; max-height: 200px; margin-bottom: 15px; border-radius: 5px; display: none; }
+        
+        .option-btn {
+            display: block; width: 100%; padding: 12px; margin-bottom: 10px;
+            background: #f1f1f1; border: 2px solid #ddd; border-radius: 8px;
+            font-size: 16px; cursor: pointer; transition: 0.2s; text-align: left;
+        }
+        .option-btn:hover { background: #e0f2f1; border-color: var(--primary-color); }
+        .option-btn.wrong { background: #ffebee; border-color: var(--danger); color: #d32f2f; }
+        #feedback-msg { margin-top: 15px; font-weight: bold; color: var(--danger); display: none; }
+
+        /* Màn hình Hoàn thành */
+        #completion-screen {
+            display: none; width: 100%; max-width: 900px; background: var(--card-bg);
+            padding: 40px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center; margin-top: 20px; box-sizing: border-box;
+        }
+        
+        .btn-main {
+            background: var(--primary-color); color: white; border: none; padding: 12px 25px;
+            border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
+            margin-top: 20px; display: inline-block;
+        }
+        .btn-main:hover { background: var(--primary-hover); }
+
+        #page-loader { text-align: center; margin-top: 50px; font-size: 18px; color: var(--primary-color); font-weight: bold; }
+        .btn-back { background: #666; margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-info">
+        <div class="lesson-title" id="display-lesson-name">ĐANG TẢI...</div>
+        <div class="user-name">👤 <span id="display-user"></span></div>
+    </div>
+
+    <div id="page-loader">⏳ Đang lấy dữ liệu bài giảng từ hệ thống...</div>
+
+    <div class="playlist-status" id="playlist-status">Đang phát: Video 1 / 1</div>
+
+    <!-- Màn hình lỗi YouTube -->
+    <div id="error-screen">
+        <h2>⚠️ KHÔNG THỂ PHÁT VIDEO</h2>
+        <p id="error-desc">Video này bị lỗi hoặc chủ sở hữu không cho phép nhúng trên trang web khác.</p>
+        <p><b>Vui lòng báo cáo với giáo viên để cập nhật lại ID Video mới.</b></p>
+        <button class="btn-main btn-back" onclick="window.location.href='index.html'">Quay lại Bảng điều khiển</button>
+        <!-- Nút bỏ qua dành cho trường hợp kẹt -->
+        <button class="btn-main" onclick="loadNextVideo()" id="btn-skip-error" style="display:none; background:#ff9800;">Bỏ qua Video này</button>
+    </div>
+
+    <div id="video-section" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center;">
+        <div class="video-wrapper">
+            <div id="player-container"></div>
+            <div class="custom-progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+                <div class="progress-indicator" id="progress-text">00:00 / 00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="completion-screen">
+        <h2 style="color: var(--primary-color);">🎉 CHÚC MỪNG BẠN ĐÃ HOÀN THÀNH VIDEO!</h2>
+        <p>Hệ thống đã ghi nhận tiến độ học tập của bạn.</p>
+        <div id="next-action-container"></div>
+    </div>
+
+    <!-- Modal Câu Hỏi -->
+    <div id="question-modal">
+        <div class="modal-content">
+            <h3 style="color: var(--primary-color); margin-top: 0;">⚠️ CÂU HỎI TƯƠNG TÁC</h3>
+            <img id="q-img" class="question-img" src="" alt="Hình minh họa">
+            <div class="question-text" id="q-text">Nội dung...</div>
+            <div id="options-container">
+                <button class="option-btn" id="opt-A" onclick="checkAnswer('A')">A. </button>
+                <button class="option-btn" id="opt-B" onclick="checkAnswer('B')">B. </button>
+                <button class="option-btn" id="opt-C" onclick="checkAnswer('C')">C. </button>
+                <button class="option-btn" id="opt-D" onclick="checkAnswer('D')">D. </button>
+            </div>
+            <div id="feedback-msg">Sai rồi! Vui lòng chọn lại đáp án đúng để tiếp tục.</div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwis4rfn0WGtxpfNPrbs49_Cl21-XuxCQl6DCC5_WWP565ZmtivRn8sPc8ofN8vm6Ayg/exec";
+        
+        let studentData, currentLesson, courseConfig;
+        let videoPlaylist = []; 
+        let currentVideoIndex = 0;
+        let player, trackingInterval, maxTimeWatched = 0;
+        let currentQuestions = [], answeredQuestions = [];
+        let isVideoCompleted = false, currentActiveQuestion = null;
+
+        window.onload = () => {
+            studentData = JSON.parse(localStorage.getItem('studentData'));
+            currentLesson = localStorage.getItem('currentLesson');
+            courseConfig = JSON.parse(localStorage.getItem('courseConfig'));
+
+            if (!studentData || !currentLesson || !courseConfig) {
+                alert("Phiên đăng nhập hết hạn!");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('display-user').innerText = studentData.hoTen;
+            
+            // Xử lý Hiển thị Tên Bài Học
+            let lessonObj = courseConfig.baiHoc.find(b => b.maBai === currentLesson);
+            let fullTitle = lessonObj ? `${courseConfig.tenHocPhan} - ${lessonObj.tenBai}` : currentLesson;
+            document.getElementById('display-lesson-name').innerText = fullTitle.toUpperCase();
+
+            fetchLessonData();
+        };
+
+        window.addEventListener("keydown", function(e) {
+            if(["ArrowLeft", "ArrowRight", "Space"].indexOf(e.code) > -1) e.preventDefault();
+        }, false);
+
+        function fetchLessonData() {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "get_lesson_data", maBai: currentLesson })
+            }).then(res => res.json()).then(data => {
+                document.getElementById('page-loader').style.display = 'none';
+                if(data.status === "success") {
+                    let rawVideos = data.data.videoData;
+                    if(rawVideos.length === 0) {
+                        alert("Chưa có video cho bài này!");
+                        window.location.href = 'index.html';
+                        return;
+                    }
+
+                    // Nhóm theo ID_Video và ThuTu
+                    let videoMap = new Map();
+                    rawVideos.forEach(row => {
+                        if (!videoMap.has(row.videoId)) {
+                            videoMap.set(row.videoId, { videoId: row.videoId, thuTu: row.thuTu, questions: [] });
+                        }
+                        if (row.noiDung && row.dapAnDung) {
+                            videoMap.get(row.videoId).questions.push(row);
+                        }
+                    });
+
+                    videoPlaylist = Array.from(videoMap.values()).sort((a, b) => a.thuTu - b.thuTu);
+                    loadYouTubeAPI();
+                } else {
+                    alert(data.message);
+                }
+            }).catch(err => alert("Lỗi mạng!"));
+        }
+
+        function loadYouTubeAPI() {
+            let tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            let firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        }
+
+        function onYouTubeIframeAPIReady() {
+            initPlayer(videoPlaylist[currentVideoIndex].videoId);
+        }
+
+        function initPlayer(videoId) {
+            currentQuestions = videoPlaylist[currentVideoIndex].questions;
+            answeredQuestions = []; maxTimeWatched = 0; isVideoCompleted = false;
+
+            // Cập nhật trạng thái Playlist
+            document.getElementById('playlist-status').innerText = `▶ Đang phát: Video ${currentVideoIndex + 1} / ${videoPlaylist.length}`;
+            document.getElementById('playlist-status').style.display = 'block';
+            document.getElementById('error-screen').style.display = 'none';
+            document.getElementById('video-section').style.display = 'flex';
+
+            player = new YT.Player('player-container', {
+                videoId: videoId,
+                playerVars: { 'controls': 0, 'disablekb': 1, 'rel': 0, 'modestbranding': 1, 'playsinline': 1 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError // Sự kiện bắt lỗi YouTube
+                }
+            });
+        }
+
+        function onPlayerError(event) {
+            document.getElementById('video-section').style.display = 'none';
+            document.getElementById('error-screen').style.display = 'block';
+            document.getElementById('error-desc').innerText = `Lỗi hệ thống YouTube (Mã: ${event.data}). Video bị chặn nhúng hoặc sai ID.`;
+            
+            // Nếu có video tiếp theo, cho phép bỏ qua
+            if(currentVideoIndex < videoPlaylist.length - 1) {
+                document.getElementById('btn-skip-error').style.display = 'inline-block';
+            }
+        }
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            trackingInterval = setInterval(trackVideoProgress, 500);
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED && !isVideoCompleted) handleVideoCompletion();
+        }
+
+        function trackVideoProgress() {
+            if (!player || typeof player.getCurrentTime !== 'function') return;
+
+            let currentTime = player.getCurrentTime();
+            let duration = player.getDuration();
+
+            if (currentTime > maxTimeWatched + 2) player.seekTo(maxTimeWatched);
+            else maxTimeWatched = Math.max(maxTimeWatched, currentTime);
+
+            if (duration > 0) {
+                document.getElementById('progress-fill').style.width = ((maxTimeWatched / duration) * 100) + '%';
+                document.getElementById('progress-text').innerText = formatTime(maxTimeWatched) + " / " + formatTime(duration);
+            }
+
+            let targetQuestion = currentQuestions.find(q => Math.floor(currentTime) === Math.floor(q.thoiGian) && !answeredQuestions.includes(q.thoiGian));
+            if (targetQuestion) { player.pauseVideo(); showPopupQuestion(targetQuestion); }
+            
+            if (duration > 0 && currentTime >= duration - 1 && !isVideoCompleted) handleVideoCompletion();
+        }
+
+        function showPopupQuestion(q) {
+            currentActiveQuestion = q;
+            document.getElementById('question-modal').style.display = 'flex';
+            document.getElementById('q-text').innerText = q.noiDung;
+            document.getElementById('feedback-msg').style.display = 'none';
+
+            let imgEl = document.getElementById('q-img');
+            if(q.hinhAnh) { imgEl.src = "images/" + q.hinhAnh; imgEl.style.display = 'inline-block'; } 
+            else imgEl.style.display = 'none';
+
+            setupOptionButton('opt-A', 'A', q.a); setupOptionButton('opt-B', 'B', q.b);
+            setupOptionButton('opt-C', 'C', q.c); setupOptionButton('opt-D', 'D', q.d);
+        }
+
+        function setupOptionButton(btnId, prefix, textValue) {
+            let btn = document.getElementById(btnId);
+            btn.classList.remove('wrong');
+            if (textValue && textValue.toString().trim() !== '') {
+                btn.innerText = prefix + ". " + textValue; btn.style.display = 'block';
+            } else btn.style.display = 'none';
+        }
+
+        function checkAnswer(selectedOpt) {
+            if (selectedOpt === currentActiveQuestion.dapAnDung.toUpperCase()) {
+                document.getElementById('question-modal').style.display = 'none';
+                answeredQuestions.push(currentActiveQuestion.thoiGian);
+                player.playVideo();
+            } else {
+                document.getElementById('opt-' + selectedOpt).classList.add('wrong');
+                document.getElementById('feedback-msg').style.display = 'block';
+            }
+        }
+
+        function handleVideoCompletion() {
+            isVideoCompleted = true; clearInterval(trackingInterval); player.pauseVideo();
+            
+            document.getElementById('video-section').style.display = 'none';
+            document.getElementById('page-loader').style.display = 'block';
+            document.getElementById('page-loader').innerText = "⏳ Đang ghi nhận tiến độ lên hệ thống...";
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "submit_score", maSV: studentData.maSV, maBai: currentLesson, loaiBai: "HoanThanhVideo", idMuc: videoPlaylist[currentVideoIndex].videoId, soCauDung: answeredQuestions.length, tongCau: currentQuestions.length })
+            }).then(res => res.json()).then(data => {
+                document.getElementById('page-loader').style.display = 'none';
+                let container = document.getElementById('next-action-container');
+                if (currentVideoIndex < videoPlaylist.length - 1) {
+                    container.innerHTML = `<button class="btn-main" onclick="loadNextVideo()">▶ Chuyển sang Video Tiếp theo</button>`;
+                } else {
+                    container.innerHTML = `<button class="btn-main" onclick="goToQuiz()">📝 BÀI TẬP ĐÃ MỞ KHÓA - CHUYỂN SANG LÀM QUIZ</button>`;
+                }
+                document.getElementById('completion-screen').style.display = 'block';
+            });
+        }
+
+        function loadNextVideo() {
+            currentVideoIndex++;
+            document.getElementById('completion-screen').style.display = 'none';
+            document.getElementById('error-screen').style.display = 'none';
+            player.destroy();
+            initPlayer(videoPlaylist[currentVideoIndex].videoId);
+        }
+
+        function goToQuiz() { window.location.href = 'quiz.html'; }
+        function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+    </script>
+</body>
+</html>
