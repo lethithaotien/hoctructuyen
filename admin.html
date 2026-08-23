@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cổng Quản Trị Đào Tạo</title>
+    <style>
+        :root {
+            --primary-color: #00796b; --primary-hover: #004d40; --bg-color: #f4f7f6;
+            --text-main: #333; --card-bg: #ffffff; --danger: #f44336;
+            --warning: #ff9800; --success: #4CAF50; --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color); color: var(--text-main);
+            margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; width: 100%; box-sizing: border-box; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        /* Login Admin */
+        .admin-login-wrapper {
+            max-width: 400px; margin: 15vh auto; background: var(--card-bg);
+            padding: 40px 30px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); text-align: center;
+        }
+        .form-control {
+            width: 100%; padding: 12px 15px; border: 1px solid var(--border-color);
+            border-radius: 6px; font-size: 15px; box-sizing: border-box; margin-bottom: 20px;
+        }
+        .btn {
+            width: 100%; padding: 12px; background-color: var(--primary-color); color: white;
+            border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        .btn:hover { background-color: var(--primary-hover); }
+
+        /* Header Quản Trị */
+        .admin-header {
+            background: var(--card-bg); padding: 20px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+        }
+        .admin-title { font-size: 20px; font-weight: bold; color: var(--primary-color); }
+        .admin-actions { display: flex; gap: 10px; }
+        .btn-action { background: var(--success); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-action:hover { opacity: 0.9; }
+        .btn-danger { background: var(--danger); }
+
+        /* Bảng Dữ Liệu */
+        .table-responsive { width: 100%; overflow-x: auto; background: var(--card-bg); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border-color); }
+        th { background: #f1f1f1; font-weight: bold; color: #555; }
+        tr:hover { background: #fafafa; }
+
+        .badge { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .badge-success { background: #e8f5e9; color: var(--success); }
+        .badge-warning { background: #fff3e0; color: var(--warning); }
+        
+        .footer-nav { text-align: center; margin-top: 30px; }
+        .footer-link { color: #666; text-decoration: none; font-weight: bold; }
+        .footer-link:hover { color: var(--primary-color); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- MÀN HÌNH ĐĂNG NHẬP ADMIN -->
+        <div id="admin-login-screen" class="screen active">
+            <div class="admin-login-wrapper">
+                <h2 style="color: var(--primary-color); margin-top:0;">🔐 CỔNG QUẢN TRỊ</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Khu vực dành riêng cho Giảng viên & Quản lý</p>
+                <input type="password" id="admin-pass" class="form-control" placeholder="Nhập Mật khẩu Quản trị">
+                <div id="login-error" style="color: var(--danger); font-size: 13px; margin-bottom: 15px; display: none;">Sai mật khẩu quản trị!</div>
+                <button class="btn" onclick="verifyAdmin()">Truy Cập Hệ Thống</button>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH DASHBOARD QUẢN TRỊ -->
+        <div id="admin-dashboard-screen" class="screen">
+            <div class="admin-header">
+                <div>
+                    <div class="admin-title">📊 QUẢN LÝ TIẾN ĐỘ VÀ KẾT QUẢ SINH VIÊN</div>
+                    <div style="font-size: 13px; color: #666; margin-top: 5px;">Hệ thống tự động tổng hợp điểm và trạng thái học tập</div>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn-action" onclick="exportExcel()">📥 Xuất Excel Báo Cáo</button>
+                    <button class="btn-action btn-danger" onclick="adminLogout()">Đăng Xuất</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã SV</th>
+                            <th>Họ và Tên</th>
+                            <th>Lớp</th>
+                            <th>Tiến độ Video</th>
+                            <th>Điểm Quiz TB</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-progress-table">
+                        <tr><td colspan="7" style="text-align: center; padding: 20px;">Đang tải dữ liệu từ Google Sheets...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="footer-nav">
+                <a href="index.html" class="footer-link">← Quay về Cổng Sinh Viên</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mật khẩu quản trị mẫu (Cô có thể thay đổi tùy ý chuỗi này)
+        const ADMIN_SECRET_PASS = "admin123"; 
+
+        function verifyAdmin() {
+            let pass = document.getElementById('admin-pass').value.trim();
+            if (pass === ADMIN_SECRET_PASS) {
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                showDashboard();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('admin-login-screen').classList.remove('active');
+            document.getElementById('admin-dashboard-screen').classList.add('active');
+            loadAdminData();
+        }
+
+        window.onload = () => {
+            if (localStorage.getItem('isAdminLoggedIn') === 'true') {
+                showDashboard();
+            }
+        };
+
+        function adminLogout() {
+            localStorage.removeItem('isAdminLoggedIn');
+            window.location.reload();
+        }
+
+        // TẢI DỮ LIỆU TỔNG HỢP CHO GIÁO VIÊN
+        function loadAdminData() {
+            // Do chúng ta dùng chung Google Sheets, ta có thể tạo một hành động api để admin lấy toàn bộ danh sách và điểm
+            // Hoặc tạm thời hiển thị dữ liệu giả lập cấu trúc để cô kiểm tra giao diện trước.
+            // Để hệ thống đồng bộ, chúng ta sẽ kết nối trực tiếp vào cơ sở dữ liệu qua Apps Script.
+            // (Trong bước này, tôi thiết lập bảng mẫu trực quan để cô dễ hình dung).
+            
+            let mockData = [
+                { maSV: "25CC010001", hoTen: "Nguyễn Thị Ân", lop: "25C", videoStatus: "Đã hoàn thành", quizScore: "8.5", status: "Đạt" },
+                { maSV: "25CC010002", hoTen: "Lê Văn Bình", lop: "25C", videoStatus: "Đang học (Bài 1)", quizScore: "Chưa thi", status: "Đang học" },
+                { maSV: "25CC010003", hoTen: "Trần Thị Cúc", lop: "25C", videoStatus: "Đã hoàn thành", quizScore: "6.0", status: "Đạt" }
+            ];
+
+            let tbody = document.getElementById('student-progress-table');
+            tbody.innerHTML = '';
+
+            mockData.forEach((s, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><b>${s.maSV}</b></td>
+                        <td>${s.hoTen}</td>
+                        <td>${s.lop}</td>
+                        <td>${s.videoStatus}</td>
+                        <td><b>${s.quizScore}</b></td>
+                        <td><span class="badge ${s.status === 'Đạt' ? 'badge-success' : 'badge-warning'}">${s.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // TÍNH NĂNG XUẤT EXCEL GIẢ LẬP
+        function exportExcel() {
+            alert("Đã trích xuất dữ liệu thành công! File báo cáo điểm tổng hợp đang được tải về máy tính của bạn.");
+        }
+    </script>
+</body>
+</html>
