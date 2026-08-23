@@ -53,7 +53,6 @@
         }
         .option-label:hover { background: #e0f2f1; border-color: var(--primary-color); }
         .option-label input { margin-top: 3px; margin-right: 12px; transform: scale(1.2); cursor: pointer; }
-        /* Style khi được chọn (Dùng CSS :has nếu trình duyệt hỗ trợ, hoặc xử lý qua JS) */
         .option-label.selected { background: #e0f2f1; border-color: var(--primary-color); font-weight: bold; }
 
         /* Nút Nộp Bài */
@@ -90,7 +89,6 @@
             text-decoration: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; margin-top: 20px;
         }
 
-        /* Responsive */
         @media (max-width: 600px) {
             .header-title { font-size: 14px; }
             .timer-badge { font-size: 16px; padding: 6px 10px; }
@@ -137,11 +135,10 @@
         
         let studentData, currentLesson, courseConfig;
         let isReviewMode = false;
-        let currentQuizData = []; // Mảng chứa câu hỏi đã trộn
+        let currentQuizData = []; 
         let timeLeft = 0;
         let timerInterval;
 
-        // Hàm xáo trộn mảng
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -157,10 +154,9 @@
             isReviewMode = localStorage.getItem('isReviewMode') === 'true';
 
             if (!studentData || !courseConfig) {
-                alert("Phiên đăng nhập hết hạn!"); window.location.href = 'index.html'; return;
+                window.location.href = 'index.html'; return;
             }
 
-            // Thiết lập tiêu đề
             if (isReviewMode) {
                 document.getElementById('quiz-title').innerText = "🎯 PHÒNG LUYỆN THI TỔNG HỢP";
             } else {
@@ -172,7 +168,6 @@
             fetchQuizData();
         };
 
-        // GỌI API LẤY ĐỀ
         function fetchQuizData() {
             let actionName = isReviewMode ? "get_review_exam" : "get_lesson_data";
             let payload = { action: actionName, maSV: studentData.maSV };
@@ -190,13 +185,30 @@
                         return;
                     }
 
-                    // Xáo trộn toàn bộ câu hỏi. Nếu ôn tập thì giới hạn 40 câu để khỏi ngợp
-                    currentQuizData = shuffleArray(rawQuestions);
-                    if (isReviewMode && currentQuizData.length > 40) currentQuizData = currentQuizData.slice(0, 40);
+                    // --- THUẬT TOÁN BỐC ĐỀ PHÂN TẦNG ---
+                    if (isReviewMode) {
+                        let grouped = {};
+                        rawQuestions.forEach(q => {
+                            if (!grouped[q.maBai]) grouped[q.maBai] = [];
+                            grouped[q.maBai].push(q);
+                        });
 
-                    // Tính giờ
-                    let timePerQ = isReviewMode ? courseConfig.phutOnTap : courseConfig.phutQuiz;
-                    timeLeft = currentQuizData.length * timePerQ * 60;
+                        let totalRaw = rawQuestions.length;
+                        let selectedQuestions = [];
+                        
+                        for (let maBai in grouped) {
+                            let qList = shuffleArray(grouped[maBai]);
+                            let quota = Math.max(1, Math.round((qList.length / totalRaw) * 50));
+                            selectedQuestions = selectedQuestions.concat(qList.slice(0, quota));
+                        }
+
+                        currentQuizData = shuffleArray(selectedQuestions).slice(0, 50);
+                        timeLeft = 60 * 60; // 60 phút
+                    } else {
+                        currentQuizData = shuffleArray(rawQuestions);
+                        timeLeft = currentQuizData.length * courseConfig.phutQuiz * 60;
+                    }
+                    // -----------------------------------
                     
                     renderQuiz();
                     startTimer();
@@ -208,7 +220,6 @@
             });
         }
 
-        // VẼ GIAO DIỆN CÂU HỎI & TRỘN ĐÁP ÁN
         function renderQuiz() {
             document.getElementById('page-loader').style.display = 'none';
             document.getElementById('quiz-screen').style.display = 'block';
@@ -216,16 +227,14 @@
             container.innerHTML = '';
 
             currentQuizData.forEach((q, index) => {
-                // Tạo mảng đáp án để trộn
                 let optionsArray = [];
                 if (q.a) optionsArray.push({ text: q.a, isCorrect: q.dapAnDung === 'A' });
                 if (q.b) optionsArray.push({ text: q.b, isCorrect: q.dapAnDung === 'B' });
                 if (q.c) optionsArray.push({ text: q.c, isCorrect: q.dapAnDung === 'C' });
                 if (q.d) optionsArray.push({ text: q.d, isCorrect: q.dapAnDung === 'D' });
                 
-                optionsArray = shuffleArray(optionsArray); // Trộn đáp án
+                optionsArray = shuffleArray(optionsArray);
 
-                // Render HTML
                 let card = document.createElement('div');
                 card.className = 'question-card';
                 
@@ -242,36 +251,34 @@
                     `;
                 });
                 
-                // Lưu lại đáp án đúng dạng Text để tí nữa Ôn tập hiện ra
-                q.correctText = optionsArray.find(o => o.isCorrect).text;
+                let correctOpt = optionsArray.find(o => o.isCorrect);
+                q.correctText = correctOpt ? correctOpt.text : "Không xác định";
 
                 card.innerHTML = html;
                 container.appendChild(card);
             });
         }
 
-        // Đổi màu Label khi chọn (UX/UI)
         function selectRadio(labelEl, groupName) {
             let labels = document.querySelectorAll(`input[name="${groupName}"]`);
             labels.forEach(input => input.parentElement.classList.remove('selected'));
             labelEl.classList.add('selected');
         }
 
-        // ĐỒNG HỒ ĐẾM NGƯỢC
         function startTimer() {
             updateTimerDisplay();
             timerInterval = setInterval(() => {
                 timeLeft--;
                 updateTimerDisplay();
                 
-                if (timeLeft <= 60) { // Dưới 1 phút thì nhấp nháy đỏ
+                if (timeLeft <= 60) {
                     document.getElementById('timer-badge').classList.add('warning');
                 }
                 
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
                     alert("⏳ Đã hết thời gian làm bài! Hệ thống tự động thu bài.");
-                    submitQuiz(true); // Tham số true = Hết giờ tự nộp
+                    submitQuiz(true);
                 }
             }, 1000);
         }
@@ -282,7 +289,6 @@
             document.getElementById('timer-text').innerText = `${m}:${s}`;
         }
 
-        // CHẤM ĐIỂM & GỬI API
         function submitQuiz(isAutoSubmit = false) {
             if (!isAutoSubmit && !confirm("Bạn có chắc chắn muốn nộp bài?")) return;
 
@@ -301,7 +307,6 @@
                 if (isCorrect) {
                     score++;
                 } else if (isReviewMode) {
-                    // Nếu là chế độ Luyện thi -> Lưu lại câu sai để hiển thị
                     wrongAnswersHtml += `
                         <div class="review-item">
                             <div class="review-q">Câu ${index + 1}: ${q.noiDung}</div>
@@ -311,9 +316,8 @@
                 }
             });
 
-            // Hiển thị Điểm
             let totalQ = currentQuizData.length;
-            let finalScore10 = (score / totalQ) * 10;
+            let finalScore10 = totalQ > 0 ? (score / totalQ) * 10 : 0;
             document.getElementById('final-score').innerText = finalScore10.toFixed(1);
             document.getElementById('correct-count').innerText = score;
             document.getElementById('total-count').innerText = totalQ;
@@ -323,7 +327,6 @@
                 document.getElementById('wrong-answers-list').innerHTML = wrongAnswersHtml;
             }
 
-            // Gọi API lưu điểm
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({ 
@@ -350,7 +353,7 @@
         }
 
         function cleanup() {
-            localStorage.removeItem('isReviewMode'); // Xóa cờ luyện thi
+            localStorage.removeItem('isReviewMode');
         }
     </script>
 </body>
