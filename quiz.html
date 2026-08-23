@@ -185,7 +185,7 @@
                         return;
                     }
 
-                    // --- THUẬT TOÁN BỐC ĐỀ PHÂN TẦNG ---
+                    // --- THUẬT TOÁN BỐC ĐỀ PHÂN TẦNG CHUẨN 50 CÂU ---
                     if (isReviewMode) {
                         let grouped = {};
                         rawQuestions.forEach(q => {
@@ -196,10 +196,19 @@
                         let totalRaw = rawQuestions.length;
                         let selectedQuestions = [];
                         
+                        // Phân bổ tỷ lệ thuận
                         for (let maBai in grouped) {
                             let qList = shuffleArray(grouped[maBai]);
-                            let quota = Math.max(1, Math.round((qList.length / totalRaw) * 50));
+                            let quota = Math.max(1, Math.floor((qList.length / totalRaw) * 50));
                             selectedQuestions = selectedQuestions.concat(qList.slice(0, quota));
+                        }
+
+                        // Nếu số lượng chưa đủ 50 (do làm tròn xuống), tự động bù thêm ngẫu nhiên từ kho chung để đảm bảo đúng chóc 50 câu
+                        if (selectedQuestions.length < 50 && rawQuestions.length >= 50) {
+                            let remaining = rawQuestions.filter(q => !selectedQuestions.includes(q));
+                            remaining = shuffleArray(remaining);
+                            let needed = 50 - selectedQuestions.length;
+                            selectedQuestions = selectedQuestions.concat(remaining.slice(0, needed));
                         }
 
                         currentQuizData = shuffleArray(selectedQuestions).slice(0, 50);
@@ -208,7 +217,7 @@
                         currentQuizData = shuffleArray(rawQuestions);
                         timeLeft = currentQuizData.length * courseConfig.phutQuiz * 60;
                     }
-                    // -----------------------------------
+                    // ------------------------------------------------
                     
                     renderQuiz();
                     startTimer();
