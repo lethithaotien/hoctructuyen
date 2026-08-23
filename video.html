@@ -170,7 +170,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwis4rfn0WGtxpfNPrbs49_Cl21-XuxCQl6DCC5_WWP565ZmtivRn8sPc8ofN8vm6Ayg/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwWFLNG7kG19vLkUGgCjysczBq9vlb84BzdM02gIlUAU4Bc1DEoiPHY9IaFSBLKoeMtA/exec";
         
         let studentData, currentLesson, courseConfig;
         let videoPlaylist = []; 
@@ -284,9 +284,6 @@
             else player.playVideo();
         }
 
-        // ==========================================
-        // FIX LỖI 2: TUA NGƯỢC VÀ LÀM LẠI CÂU HỎI
-        // ==========================================
         function seekVideo(e) {
             if (!player || typeof player.getDuration !== 'function') return;
             let duration = player.getDuration();
@@ -305,17 +302,15 @@
                     statusTxt.style.color = "#555";
                 }, 2000);
             } else {
-                // Reset triệt để trạng thái khi tua ngược
                 document.getElementById('question-modal').style.display = 'none';
                 isAnswering = false; questionQueue = []; currentTargetTime = null;
                 
-                // Quét và xóa kết quả của các câu hỏi từ mốc tua trở về sau
                 currentQuestions.forEach((q, idx) => {
                     let t = Math.floor(q.thoiGian);
                     if (t >= Math.floor(targetTime)) {
-                        delete questionResults[idx]; // Xóa điểm
+                        delete questionResults[idx];
                         let arrIdx = answeredQuestions.indexOf(t);
-                        if (arrIdx > -1) answeredQuestions.splice(arrIdx, 1); // Cho phép mở lại popup
+                        if (arrIdx > -1) answeredQuestions.splice(arrIdx, 1);
                     }
                 });
 
@@ -354,7 +349,6 @@
 
             if (!isAnswering) {
                 let t = Math.floor(currentTime);
-                // Bắt tất cả câu hỏi tại đúng giây hiện tại
                 let targets = currentQuestions.map((q, idx) => ({...q, originalIndex: idx}))
                                               .filter(q => Math.floor(q.thoiGian) === t && !answeredQuestions.includes(t));
                 
@@ -373,7 +367,7 @@
             document.getElementById('question-modal').style.display = 'flex';
             document.getElementById('q-text').innerText = q.noiDung;
             document.getElementById('feedback-msg').style.display = 'none';
-            document.getElementById('btn-continue-video').style.display = 'none'; // Luôn ẩn ban đầu
+            document.getElementById('btn-continue-video').style.display = 'none';
 
             let badge = document.getElementById('queue-badge');
             if (questionQueue.length > 1) { 
@@ -404,15 +398,10 @@
             });
         }
 
-        // ==========================================
-        // FIX LỖI 1: AUTO-NEXT LOGIC
-        // ==========================================
         function selectAnswer(btn, isCorrect) {
-            // 1. Đóng băng tất cả lựa chọn
             document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
             let feedback = document.getElementById('feedback-msg');
             
-            // 2. Ghi đè điểm theo Index của câu hỏi (Tránh đè trùng giây)
             if (isCorrect) {
                 btn.classList.add('correct');
                 feedback.innerText = "✅ Chính xác!"; feedback.style.color = "var(--success)";
@@ -424,14 +413,11 @@
             }
             feedback.style.display = 'block';
 
-            // 3. Đợi 1.5 giây rồi tự động chuyển
             setTimeout(() => {
-                questionQueue.shift(); // Xóa câu hiện tại khỏi hàng đợi
-                
+                questionQueue.shift();
                 if (questionQueue.length > 0) {
-                    showPopupQuestion(questionQueue[0]); // Auto-next câu tiếp theo
+                    showPopupQuestion(questionQueue[0]);
                 } else {
-                    // Hết hàng đợi -> Bật nút Tiếp tục xem
                     document.getElementById('btn-continue-video').style.display = 'inline-block';
                 }
             }, 1500);
@@ -439,13 +425,13 @@
 
         function continueAfterAnswer() {
             document.getElementById('question-modal').style.display = 'none';
-            answeredQuestions.push(currentTargetTime); // Khóa mốc thời gian này lại
+            answeredQuestions.push(currentTargetTime);
             isAnswering = false; currentTargetTime = null;
             if(!isVideoCompleted) player.playVideo();
         }
 
         // ==========================================
-        // XỬ LÝ CUỐI VIDEO & QUY TẮC 50%
+        // KHẮC PHỤC TRIỆT ĐỂ LỖI KẸT MÀN HÌNH
         // ==========================================
         function handleVideoCompletion() {
             isVideoCompleted = true; clearInterval(trackingInterval); player.pauseVideo();
@@ -459,22 +445,38 @@
                 document.getElementById('page-loader').style.display = 'block';
                 document.getElementById('page-loader').innerText = "⏳ Đang ghi nhận tiến độ lên hệ thống...";
                 
+                // Thiết lập bộ đếm phòng hờ (Timeout 5 giây): Nếu mạng nghẽn không phản hồi, tự động mở nút để sinh viên bấm chuyển bài
+                let safetyTimer = setTimeout(() => {
+                    showCompletionButtons();
+                }, 5000);
+
                 fetch(SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify({ action: "submit_score", maSV: studentData.maSV, maBai: currentLesson, loaiBai: "HoanThanhVideo", idMuc: videoPlaylist[currentVideoIndex].videoId, soCauDung: correctCount, tongCau: totalQ })
-                }).then(res => res.json()).then(data => {
-                    document.getElementById('page-loader').style.display = 'none';
-                    let container = document.getElementById('next-action-container');
-                    if (currentVideoIndex < videoPlaylist.length - 1) {
-                        container.innerHTML = `<button class="btn-main" onclick="loadNextVideo()">▶ Chuyển sang Video Tiếp theo</button>`;
-                    } else {
-                        container.innerHTML = `<button class="btn-main" onclick="goToQuiz()">📝 BÀI TẬP ĐÃ MỞ KHÓA - CHUYỂN SANG LÀM QUIZ</button>`;
-                    }
-                    document.getElementById('completion-screen').style.display = 'block';
+                })
+                .then(res => res.json())
+                .then(data => {
+                    clearTimeout(safetyTimer); // Xóa bộ đếm phòng hờ vì đã phản hồi thành công
+                    showCompletionButtons();
+                })
+                .catch(err => {
+                    clearTimeout(safetyTimer);
+                    showCompletionButtons(); // Mặc kệ lỗi mạng, vẫn mở nút cho sinh viên học tiếp
                 });
             } else {
                 document.getElementById('fail-screen').style.display = 'block';
             }
+        }
+
+        function showCompletionButtons() {
+            document.getElementById('page-loader').style.display = 'none';
+            let container = document.getElementById('next-action-container');
+            if (currentVideoIndex < videoPlaylist.length - 1) {
+                container.innerHTML = `<button class="btn-main" onclick="loadNextVideo()">▶ Chuyển sang Video Tiếp theo</button>`;
+            } else {
+                container.innerHTML = `<button class="btn-main" onclick="goToQuiz()">📝 BÀI TẬP ĐÃ MỞ KHÓA - CHUYỂN SANG LÀM QUIZ</button>`;
+            }
+            document.getElementById('completion-screen').style.display = 'block';
         }
 
         function resetAndRelearn() {
