@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cổng Quản Trị Đào Tạo</title>
+    <!-- Thư viện SheetJS để xuất Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary-color: #00796b; --primary-hover: #004d40; --bg-color: #f4f7f6;
             --text-main: #333; --card-bg: #ffffff; --danger: #f44336;
-            --warning: #ff9800; --success: #4CAF50; --border-color: #e0e0e0;
+            --warning: #ff9800; --border-color: #e0e0e0; --tab-inactive: #ddd;
         }
 
         body {
@@ -17,7 +19,7 @@
             margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh;
         }
 
-        .container { max-width: 1000px; margin: 20px auto; padding: 20px; width: 100%; box-sizing: border-box; }
+        .container { max-width: 1100px; margin: 20px auto; padding: 20px; width: 100%; box-sizing: border-box; }
         .screen { display: none; }
         .screen.active { display: block; }
 
@@ -38,27 +40,39 @@
 
         /* Header Quản Trị */
         .admin-header {
-            background: var(--card-bg); padding: 20px; border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px;
+            background: var(--card-bg); padding: 20px; border-radius: 10px 10px 0 0;
             display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+            border-bottom: 1px solid var(--border-color);
         }
         .admin-title { font-size: 20px; font-weight: bold; color: var(--primary-color); }
         .admin-actions { display: flex; gap: 10px; }
-        .btn-action { background: var(--success); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-action { background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-action:hover { opacity: 0.9; }
         .btn-danger { background: var(--danger); }
 
+        /* Tabs System */
+        .tabs-container { background: var(--card-bg); display: flex; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 0 0 10px 10px; margin-bottom: 20px;}
+        .tab-btn {
+            flex: 1; padding: 15px; border: none; background: #f9f9f9; font-size: 16px; font-weight: bold;
+            color: #777; cursor: pointer; transition: 0.3s; outline: none; border-bottom: 3px solid transparent;
+        }
+        .tab-btn:hover { background: #f1f1f1; }
+        .tab-btn.active { background: white; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
         /* Bảng Dữ Liệu */
         .table-responsive { width: 100%; overflow-x: auto; background: var(--card-bg); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; white-space: nowrap; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); }
         th { background: #f1f1f1; font-weight: bold; color: #555; }
+        th:last-child, td:last-child { border-right: none; }
         tr:hover { background: #fafafa; }
-
-        .badge { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; }
-        .badge-success { background: #e8f5e9; color: var(--success); }
-        .badge-warning { background: #fff3e0; color: var(--warning); }
+        .text-left { text-align: left; }
         
+        #page-loader { text-align: center; padding: 40px; font-size: 16px; color: var(--primary-color); font-weight: bold; display: none; }
         .footer-nav { text-align: center; margin-top: 30px; }
         .footer-link { color: #666; text-decoration: none; font-weight: bold; }
         .footer-link:hover { color: var(--primary-color); }
@@ -67,7 +81,7 @@
 <body>
 
     <div class="container">
-        <!-- MÀN HÌNH ĐĂNG NHẬP ADMIN -->
+        <!-- ĐĂNG NHẬP ADMIN -->
         <div id="admin-login-screen" class="screen active">
             <div class="admin-login-wrapper">
                 <h2 style="color: var(--primary-color); margin-top:0;">🔐 CỔNG QUẢN TRỊ</h2>
@@ -78,36 +92,70 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH DASHBOARD QUẢN TRỊ -->
+        <!-- DASHBOARD QUẢN TRỊ -->
         <div id="admin-dashboard-screen" class="screen">
             <div class="admin-header">
                 <div>
-                    <div class="admin-title">📊 QUẢN LÝ TIẾN ĐỘ VÀ KẾT QUẢ SINH VIÊN</div>
-                    <div style="font-size: 13px; color: #666; margin-top: 5px;">Hệ thống tự động tổng hợp điểm và trạng thái học tập</div>
+                    <div class="admin-title">📊 QUẢN LÝ TIẾN ĐỘ VÀ KẾT QUẢ HỌC TẬP</div>
                 </div>
                 <div class="admin-actions">
-                    <button class="btn-action" onclick="exportExcel()">📥 Xuất Excel Báo Cáo</button>
+                    <button class="btn-action" onclick="exportToExcel()">📥 Xuất Excel Tab Hiện Tại</button>
                     <button class="btn-action btn-danger" onclick="adminLogout()">Đăng Xuất</button>
                 </div>
             </div>
 
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>STT</th>
-                            <th>Mã SV</th>
-                            <th>Họ và Tên</th>
-                            <th>Lớp</th>
-                            <th>Tiến độ Video</th>
-                            <th>Điểm Quiz TB</th>
-                            <th>Trạng thái</th>
-                        </tr>
-                    </thead>
-                    <tbody id="student-progress-table">
-                        <tr><td colspan="7" style="text-align: center; padding: 20px;">Đang tải dữ liệu từ Google Sheets...</td></tr>
-                    </tbody>
-                </table>
+            <!-- Khối Tabs -->
+            <div class="tabs-container">
+                <button class="tab-btn active" data-tab="tab-video" onclick="switchTab('tab-video')">Điểm Tiến Độ Video (Hệ số 1)</button>
+                <button class="tab-btn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')">Điểm Quiz (Hệ số 2)</button>
+            </div>
+
+            <div id="page-loader">⏳ Đang tổng hợp dữ liệu từ hệ thống... Vui lòng đợi!</div>
+
+            <!-- TAB 1: ĐIỂM VIDEO -->
+            <div id="tab-video" class="tab-content active">
+                <div class="table-responsive">
+                    <table id="table-video">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th class="text-left">Mã SV</th>
+                                <th class="text-left">Họ và Tên</th>
+                                <th>Lớp</th>
+                                <th>B1-Video</th>
+                                <th>B2-Video</th>
+                                <th>B3-Video</th>
+                                <th>B4-Video</th>
+                                <th>B5-Video</th>
+                                <th>B6-Video</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-video"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: ĐIỂM QUIZ -->
+            <div id="tab-quiz" class="tab-content">
+                <div class="table-responsive">
+                    <table id="table-quiz">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th class="text-left">Mã SV</th>
+                                <th class="text-left">Họ và Tên</th>
+                                <th>Lớp</th>
+                                <th>B1-Quiz</th>
+                                <th>B2-Quiz</th>
+                                <th>B3-Quiz</th>
+                                <th>B4-Quiz</th>
+                                <th>B5-Quiz</th>
+                                <th>B6-Quiz</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-quiz"></tbody>
+                    </table>
+                </div>
             </div>
 
             <div class="footer-nav">
@@ -117,7 +165,7 @@
     </div>
 
     <script>
-        // Mật khẩu quản trị mẫu (Cô có thể thay đổi tùy ý chuỗi này)
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwis4rfn0WGtxpfNPrbs49_Cl21-XuxCQl6DCC5_WWP565ZmtivRn8sPc8ofN8vm6Ayg/exec";
         const ADMIN_SECRET_PASS = "admin123"; 
 
         function verifyAdmin() {
@@ -137,9 +185,7 @@
         }
 
         window.onload = () => {
-            if (localStorage.getItem('isAdminLoggedIn') === 'true') {
-                showDashboard();
-            }
+            if (localStorage.getItem('isAdminLoggedIn') === 'true') showDashboard();
         };
 
         function adminLogout() {
@@ -147,40 +193,98 @@
             window.location.reload();
         }
 
-        // TẢI DỮ LIỆU TỔNG HỢP CHO GIÁO VIÊN
-        function loadAdminData() {
-            // Do chúng ta dùng chung Google Sheets, ta có thể tạo một hành động api để admin lấy toàn bộ danh sách và điểm
-            // Hoặc tạm thời hiển thị dữ liệu giả lập cấu trúc để cô kiểm tra giao diện trước.
-            // Để hệ thống đồng bộ, chúng ta sẽ kết nối trực tiếp vào cơ sở dữ liệu qua Apps Script.
-            // (Trong bước này, tôi thiết lập bảng mẫu trực quan để cô dễ hình dung).
+        // CHUYỂN ĐỔI TABS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            let mockData = [
-                { maSV: "25CC010001", hoTen: "Nguyễn Thị Ân", lop: "25C", videoStatus: "Đã hoàn thành", quizScore: "8.5", status: "Đạt" },
-                { maSV: "25CC010002", hoTen: "Lê Văn Bình", lop: "25C", videoStatus: "Đang học (Bài 1)", quizScore: "Chưa thi", status: "Đang học" },
-                { maSV: "25CC010003", hoTen: "Trần Thị Cúc", lop: "25C", videoStatus: "Đã hoàn thành", quizScore: "6.0", status: "Đạt" }
-            ];
+            document.querySelector(`button[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
 
-            let tbody = document.getElementById('student-progress-table');
-            tbody.innerHTML = '';
+        // TẢI & HIỂN THỊ DỮ LIỆU
+        function loadAdminData() {
+            document.getElementById('page-loader').style.display = 'block';
+            document.getElementById('tab-video').style.display = 'none';
+            document.getElementById('tab-quiz').style.display = 'none';
 
-            mockData.forEach((s, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td><b>${s.maSV}</b></td>
-                        <td>${s.hoTen}</td>
-                        <td>${s.lop}</td>
-                        <td>${s.videoStatus}</td>
-                        <td><b>${s.quizScore}</b></td>
-                        <td><span class="badge ${s.status === 'Đạt' ? 'badge-success' : 'badge-warning'}">${s.status}</span></td>
-                    </tr>
-                `;
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "get_admin_data" })
+            }).then(res => res.json()).then(data => {
+                document.getElementById('page-loader').style.display = 'none';
+                document.getElementById('tab-video').style.display = 'block';
+                document.getElementById('tab-quiz').style.display = 'block';
+                
+                if(data.status === "success") {
+                    renderTables(data.data);
+                } else {
+                    alert("Lỗi tải dữ liệu: " + data.message);
+                }
+            }).catch(err => {
+                alert("Lỗi kết nối máy chủ!");
             });
         }
 
-        // TÍNH NĂNG XUẤT EXCEL GIẢ LẬP
-        function exportExcel() {
-            alert("Đã trích xuất dữ liệu thành công! File báo cáo điểm tổng hợp đang được tải về máy tính của bạn.");
+        function formatScore(score) {
+            if (score === "-" || score === undefined || score === null) return "-";
+            return Number(score).toFixed(1);
+        }
+
+        function renderTables(students) {
+            let tbodyVideo = document.getElementById('tbody-video');
+            let tbodyQuiz = document.getElementById('tbody-quiz');
+            tbodyVideo.innerHTML = ''; tbodyQuiz.innerHTML = '';
+
+            students.forEach((sv, index) => {
+                // Hàng Tab Video
+                let trVideo = document.createElement('tr');
+                trVideo.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="text-left"><b>${sv.maSV}</b></td>
+                    <td class="text-left">${sv.hoTen}</td>
+                    <td>${sv.lop}</td>
+                    <td>${formatScore(sv.videoScores.Bai1)}</td>
+                    <td>${formatScore(sv.videoScores.Bai2)}</td>
+                    <td>${formatScore(sv.videoScores.Bai3)}</td>
+                    <td>${formatScore(sv.videoScores.Bai4)}</td>
+                    <td>${formatScore(sv.videoScores.Bai5)}</td>
+                    <td>${formatScore(sv.videoScores.Bai6)}</td>
+                `;
+                tbodyVideo.appendChild(trVideo);
+
+                // Hàng Tab Quiz
+                let trQuiz = document.createElement('tr');
+                trQuiz.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td class="text-left"><b>${sv.maSV}</b></td>
+                    <td class="text-left">${sv.hoTen}</td>
+                    <td>${sv.lop}</td>
+                    <td>${formatScore(sv.quizScores.Bai1)}</td>
+                    <td>${formatScore(sv.quizScores.Bai2)}</td>
+                    <td>${formatScore(sv.quizScores.Bai3)}</td>
+                    <td>${formatScore(sv.quizScores.Bai4)}</td>
+                    <td>${formatScore(sv.quizScores.Bai5)}</td>
+                    <td>${formatScore(sv.quizScores.Bai6)}</td>
+                `;
+                tbodyQuiz.appendChild(trQuiz);
+            });
+        }
+
+        // XUẤT FILE EXCEL THEO TAB ĐANG MỞ
+        function exportToExcel() {
+            // Xác định Tab nào đang hiển thị
+            let activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
+            let tableId = activeTab === 'tab-video' ? 'table-video' : 'table-quiz';
+            let fileName = activeTab === 'tab-video' ? 'Diem_TienDo_HeSo1.xlsx' : 'Diem_Quiz_HeSo2.xlsx';
+
+            let table = document.getElementById(tableId);
+            
+            // Chuyển đổi HTML Table thành đối tượng Workbook của SheetJS
+            let wb = XLSX.utils.table_to_book(table, {sheet: "Bang Diem"});
+            
+            // Kích hoạt tải file
+            XLSX.writeFile(wb, fileName);
         }
     </script>
 </body>
