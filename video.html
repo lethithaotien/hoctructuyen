@@ -31,7 +31,6 @@
             overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative;
         }
         
-        /* Cho phép click tương tác linh hoạt hơn */
         #player-container { width: 100%; aspect-ratio: 16/9; }
         
         .custom-progress-bar { 
@@ -85,7 +84,7 @@
         .option-btn.wrong { background: #ffebee; border-color: var(--danger); color: #c62828; font-weight: bold; }
         
         #feedback-msg { margin-top: 15px; font-size: 16px; font-weight: bold; display: none; }
-        .btn-main { background: var(--primary-color); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; display: inline-block; }
+        .btn-main { background: var(--primary-color); color: white; border: none; padding: 12px 25px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; display: inline-block; text-decoration: none; }
         .btn-main:hover { background: var(--primary-hover); }
         #page-loader { text-align: center; margin-top: 50px; font-size: 18px; color: var(--primary-color); font-weight: bold; }
 
@@ -123,7 +122,6 @@
     <div id="video-section" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center;">
         <div class="video-wrapper">
             <div id="player-container"></div>
-            <!-- Cho phép click tua tự do -->
             <div class="custom-progress-bar" id="progress-bar" onclick="seekVideo(event)">
                 <div class="progress-fill" id="progress-fill"></div>
             </div>
@@ -131,6 +129,10 @@
                 <button id="btn-play-pause" class="btn-control" onclick="togglePlayPause()">⏸ Tạm dừng</button>
                 <div class="progress-indicator" id="progress-text">00:00 / 00:00</div>
             </div>
+        </div>
+        
+        <div style="margin-top: 15px; width: 100%; max-width: 900px; text-align: left;">
+            <a href="index.html" class="btn-main" style="background-color: #666; padding: 10px 20px; font-size: 14px;">← Quay lại Danh sách</a>
         </div>
     </div>
 
@@ -161,6 +163,7 @@
         let videoPlaylist = []; 
         let currentVideoIndex = 0;
         let player, trackingInterval;
+        let startVideoId = null; 
         
         let currentQuestions = [];
         let answeredQuestions = []; 
@@ -181,6 +184,8 @@
             studentData = JSON.parse(localStorage.getItem('studentData'));
             currentLesson = localStorage.getItem('currentLesson');
             courseConfig = JSON.parse(localStorage.getItem('courseConfig'));
+            
+            startVideoId = localStorage.getItem('startVideoId');
 
             if (!studentData || !currentLesson) { window.location.href = 'index.html'; return; }
             document.getElementById('display-user').innerText = studentData.hoTen;
@@ -208,6 +213,13 @@
                         if (row.noiDung && row.dapAnDung) videoMap.get(row.videoId).questions.push(row);
                     });
                     videoPlaylist = Array.from(videoMap.values()).sort((a, b) => a.thuTu - b.thuTu);
+                    
+                    if (startVideoId) {
+                        let idx = videoPlaylist.findIndex(v => v.videoId === startVideoId);
+                        if (idx !== -1) currentVideoIndex = idx;
+                        localStorage.removeItem('startVideoId');
+                    }
+
                     loadYouTubeAPI();
                 } else alert(data.message);
             }).catch(err => alert("Lỗi mạng!"));
@@ -236,7 +248,7 @@
 
             player = new YT.Player('player-container', {
                 videoId: videoId,
-                playerVars: { 'controls': 1, 'disablekb': 0, 'rel': 0, 'modestbranding': 1, 'playsinline': 1 }, // Cho phép hiện điều khiển Youtube
+                playerVars: { 'controls': 1, 'disablekb': 0, 'rel': 0, 'modestbranding': 1, 'playsinline': 1 }, 
                 events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onError': onPlayerError }
             });
         }
@@ -265,7 +277,6 @@
             else player.playVideo();
         }
 
-        // TUA TỰ DO KHÔNG BỊ CHẶN
         function seekVideo(e) {
             if (!player || typeof player.getDuration !== 'function') return;
             let duration = player.getDuration();
@@ -420,9 +431,14 @@
             document.getElementById('page-loader').style.display = 'none';
             let container = document.getElementById('next-action-container');
             if (currentVideoIndex < videoPlaylist.length - 1) {
-                container.innerHTML = `<button class="btn-main" onclick="loadNextVideo()">▶ Chuyển sang Video Tiếp theo</button>`;
+                container.innerHTML = `
+                    <button class="btn-main" onclick="loadNextVideo()" style="margin-right: 10px;">▶ Xem Video Tiếp theo</button>
+                    <button class="btn-main" style="background-color: #666;" onclick="window.location.href='index.html'">Quay lại Danh sách</button>
+                `;
             } else {
-                container.innerHTML = `<button class="btn-main" onclick="goToQuiz()">📝 BÀI TẬP ĐÃ MỞ KHÓA - CHUYỂN SANG LÀM QUIZ</button>`;
+                container.innerHTML = `
+                    <button class="btn-main" onclick="window.location.href='index.html'">Về Tổng quan xem ĐK Quiz</button>
+                `;
             }
             document.getElementById('completion-screen').style.display = 'block';
         }
@@ -432,7 +448,6 @@
             player.destroy(); initPlayer(videoPlaylist[currentVideoIndex].videoId);
         }
 
-        function goToQuiz() { window.location.href = 'index.html'; }
         function formatTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
     </script>
 </body>
