@@ -22,7 +22,6 @@
         .screen.active { display: block; animation: fadeIn 0.4s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Login Screen */
         .login-wrapper {
             max-width: 400px; margin: 8vh auto 0; background: var(--card-bg); padding: 40px 30px;
             border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); text-align: center;
@@ -52,7 +51,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Dashboard Screen */
         .dashboard-header { background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .course-title { font-size: 22px; font-weight: bold; text-align: center; color: var(--primary-color); margin-bottom: 15px; text-transform: uppercase; }
         .user-info-row { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid var(--border-color); }
@@ -60,14 +58,14 @@
         .btn-logout { background-color: var(--danger); padding: 8px 15px; width: auto; font-size: 14px; }
         .btn-logout:hover { background-color: #d32f2f; }
 
-        .utilities { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .utilities { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px; }
         .util-card {
             background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center;
             text-decoration: none; color: var(--text-main); border: 1px solid var(--border-color); transition: 0.2s;
         }
         .util-card:hover { border-color: var(--primary-color); box-shadow: 0 4px 10px rgba(0,121,107,0.1); transform: translateY(-2px); }
         .util-icon { font-size: 24px; margin-bottom: 5px; }
-        .util-title { font-weight: bold; font-size: 14px; }
+        .util-title { font-weight: bold; font-size: 13px; }
 
         .section-title { font-size: 18px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; margin-bottom: 20px; }
         
@@ -79,7 +77,7 @@
         .lesson-info p { margin: 0; color: var(--text-light); font-size: 14px; }
         
         .action-buttons { display: flex; gap: 10px; }
-        .btn-enter { background-color: var(--primary-color); width: auto; padding: 10px 20px; }
+        .btn-enter { background-color: var(--primary-color); width: auto; padding: 10px 20px; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer;}
         .btn-test { background-color: var(--warning); width: auto; padding: 10px 20px; }
         .btn-test:hover { background-color: #f57c00; }
         .btn-locked { background-color: #e0e0e0; color: #777; cursor: not-allowed; width: auto; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; }
@@ -89,6 +87,10 @@
         .admin-link:hover { color: var(--primary-color); }
         
         #offline-warning { display: none; background: var(--danger); color: white; text-align: center; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; font-weight: bold; }
+        
+        @media (max-width: 600px) {
+            .utilities { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -136,6 +138,10 @@
                     <div class="util-icon">📚</div>
                     <div class="util-title">Tài liệu Môn học</div>
                 </a>
+                <a href="#" target="_blank" id="link-tructuyen" class="util-card">
+                    <div class="util-icon">🎥</div>
+                    <div class="util-title">Vào học trực tuyến</div>
+                </a>
                 <a href="#" target="_blank" id="link-thongbao" class="util-card">
                     <div class="util-icon">📢</div>
                     <div class="util-title">Bảng điểm & Thông báo</div>
@@ -145,7 +151,6 @@
             <div class="section-title">Tiến trình Học tập</div>
             <div id="lesson-list-container"></div>
 
-            <!-- NÚT PHÒNG LUYỆN THI -->
             <button class="btn" style="background-color: #e65100; margin-top: 30px; padding: 18px; font-size: 18px;" onclick="goToReviewExam()">
                 🎯 VÀO PHÒNG LUYỆN THI TỔNG HỢP (KHÔNG GHI ĐIỂM)
             </button>
@@ -153,12 +158,12 @@
         </div>
     </div>
 
-    <!-- CỔNG QUẢN TRỊ -->
     <div class="footer">
         <a href="admin.html" class="admin-link"><span>⚙️</span> Quản lý Đào tạo</a>
     </div>
 
     <script>
+        // CẬP NHẬT LẠI URL NẾU BẠN TẠO PHIÊN BẢN DEPLOY MỚI Ở BƯỚC 2
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwWFLNG7kG19vLkUGgCjysczBq9vlb84BzdM02gIlUAU4Bc1DEoiPHY9IaFSBLKoeMtA/exec";
 
         window.addEventListener('offline', () => document.getElementById('offline-warning').style.display = 'block');
@@ -213,58 +218,74 @@
             });
         }
 
-        // Tự động gọi API lấy điểm của sinh viên để kiểm tra điều kiện mở nút Quiz (>= 5.0)
         function checkStudentProgress(student, config) {
             fetch(SCRIPT_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: "get_admin_data" })
+                body: JSON.stringify({ action: "get_student_progress", maSV: student.maSV })
             }).then(res => res.json()).then(resData => {
-                let videoScoresMap = {};
+                let progressData = {};
                 if (resData.status === "success") {
-                    let svRecord = resData.data.find(s => s.maSV === student.maSV);
-                    if (svRecord) {
-                        videoScoresMap = svRecord.videoScores; // Chứa điểm video các bài VD: {Bai1: 10, Bai2: "-"}
-                    }
+                    progressData = resData.data;
                 }
-                renderDashboard(student, config, videoScoresMap);
+                renderDashboard(student, config, progressData);
                 showScreen('dashboard-screen');
             }).catch(err => {
-                // Nếu lỗi mạng, vẫn render nhưng tạm khóa nút quiz để đảm bảo an toàn
                 renderDashboard(student, config, {});
                 showScreen('dashboard-screen');
             });
         }
 
-        function renderDashboard(student, config, videoScoresMap) {
+        function renderDashboard(student, config, progressData) {
             document.getElementById('student-name').innerText = student.hoTen;
             document.getElementById('student-class').innerText = student.lop;
             document.getElementById('course-name').innerText = "HỌC PHẦN: " + config.tenHocPhan;
             document.getElementById('link-tailieu').href = config.linkTaiLieu;
             document.getElementById('link-thongbao').href = config.linkThongBao;
+            document.getElementById('link-tructuyen').href = config.linkTrucTuyen || "#";
 
             const container = document.getElementById('lesson-list-container');
             container.innerHTML = '';
 
             config.baiHoc.forEach((bai) => {
-                let vScore = videoScoresMap[bai.maBai];
-                let isPassedVideo = (vScore !== undefined && vScore !== "-" && Number(vScore) >= 5.0);
+                let pData = progressData[bai.maBai] || { videos: [], lessonScore: "-", isAllCompleted: false };
+                let vScore = pData.lessonScore;
+                
+                let isPassedQuiz = (pData.isAllCompleted && vScore !== "-" && Number(vScore) >= 5.0);
 
-                let quizBtnHtml = "";
-                if (isPassedVideo) {
-                    quizBtnHtml = `<button class="btn btn-test" onclick="testQuizDirectly('${bai.maBai}')">📝 Vào thi Quiz</button>`;
-                } else {
-                    quizBtnHtml = `<button class="btn-locked" title="Cần hoàn thành xem video và đạt từ 5.0 điểm trở lên để mở khóa">🔒 Thi Quiz (Chưa đủ ĐK)</button>`;
-                }
+                let quizBtnHtml = isPassedQuiz 
+                    ? `<button class="btn btn-test" onclick="testQuizDirectly('${bai.maBai}')">📝 Vào thi Quiz</button>`
+                    : `<button class="btn-locked" title="Cần hoàn thành 100% video và đạt từ 5.0 điểm trở lên">🔒 Thi Quiz (Chưa đủ ĐK)</button>`;
+
+                let videoListHtml = pData.videos.map(v => {
+                    let statusColor = v.status === "Đã hoàn thành" ? "var(--success)" : "#888";
+                    return `
+                    <div style="display:flex; justify-content:space-between; padding: 12px; border-top: 1px dashed var(--border-color); background: #fdfdfd; align-items:center;">
+                       <div>
+                           <b style="font-size: 15px;">Video ${v.thuTu}</b> <br>
+                           <span style="color: ${statusColor}; font-size:13px; font-weight: bold;">${v.status}</span> 
+                           <span style="font-size:13px; margin-left:15px; color: #555;">Điểm: <b style="color:var(--primary-color)">${v.score}</b></span>
+                       </div>
+                       <button class="btn btn-enter" style="padding: 8px 15px; font-size:13px; width: auto; opacity: ${v.status === 'Đã hoàn thành' ? '0.8' : '1'};" onclick="goToVideo('${bai.maBai}', '${v.vId}')">
+                           ${v.status === "Đã hoàn thành" ? "↺ Học lại" : "▶ Vào học"}
+                       </button>
+                    </div>`;
+                }).join("");
+
+                if(pData.videos.length === 0) videoListHtml = `<div style="padding: 10px; color: #888; font-size: 13px; border-top: 1px dashed var(--border-color);">Chưa có dữ liệu video...</div>`;
 
                 let cardHtml = `
-                    <div class="lesson-card">
-                        <div class="lesson-info">
-                            <h3>${bai.tenBai}</h3>
-                            <p>Xem video bài giảng, trả lời câu hỏi tương tác (Điểm Video: <b>${vScore !== undefined ? vScore : "-"}</b>)</p>
+                    <div class="lesson-card" style="flex-direction: column; align-items: stretch; padding: 0; overflow: hidden;">
+                        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div class="lesson-info">
+                                <h3>${bai.tenBai}</h3>
+                                <p>Tổng điểm Video Bài học: <b style="color:var(--primary-color)">${vScore}</b> / 10</p>
+                            </div>
+                            <div class="action-buttons">
+                                ${quizBtnHtml}
+                            </div>
                         </div>
-                        <div class="action-buttons">
-                            <button class="btn btn-enter" onclick="goToLesson('${bai.maBai}')">▶ Vào học</button>
-                            ${quizBtnHtml}
+                        <div style="background: #f9f9f9;">
+                            ${videoListHtml}
                         </div>
                     </div>
                 `;
@@ -272,8 +293,9 @@
             });
         }
 
-        function goToLesson(maBai) {
+        function goToVideo(maBai, videoId) {
             localStorage.setItem('currentLesson', maBai);
+            localStorage.setItem('startVideoId', videoId);
             localStorage.removeItem('isReviewMode');
             window.location.href = 'video.html';
         }
